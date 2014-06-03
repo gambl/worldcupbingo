@@ -5,12 +5,22 @@ import random
 import sys
 import hashlib
 from string import Template
+import qrcode
+import qrcode.image.svg
+import StringIO
 
 DEFAULT_BINGOS=1
 DEFAULT_ROWS=4
 DEFAULT_COLUMNS=3
 DEFAULT_PRICE="£2/board"
 DEBUG=False
+
+qr = qrcode.QRCode(
+    version=1,
+    error_correction=qrcode.constants.ERROR_CORRECT_L,
+    box_size=10,
+    border=4,
+)
 
 cellTemplate = Template(open("tablecell.html").read())
 boardTemplate = Template(open("div.html").read())
@@ -88,8 +98,9 @@ def main(cmd,bingos=DEFAULT_BINGOS,rows=DEFAULT_ROWS,columns=DEFAULT_COLUMNS,pri
         board = generateBoard(int(rows), int(columns))
         boardHtml = boardAsTable(board, int(rows), int(columns))
         boardId = getBoardHash(board)
+        boardQR = generateBoardQR(boardId)
         boards += boardTemplate.substitute(board=boardHtml,
-        boardId=boardId, price=price)
+        boardId=boardId, price=price, qr=boardQR)
     print mainTemplate.substitute(boards=boards)
 
 def generateBoard(rows, columns):
@@ -121,6 +132,12 @@ def getBoardHash(board):
         boardHash.update(t.encode("utf8"))
     return boardHash.hexdigest()
 
+def generateBoardQR(boardId):
+    qr.add_data(boardId)
+    image=qrcode.make(boardId,image_factory=qrcode.image.svg.SvgImage)
+    image_stream = StringIO.StringIO()
+    image.save(image_stream)
+    return image_stream.getvalue()
 
 def boardAsTable(board, rows, columns):
     html = "<table>\n"
@@ -138,6 +155,8 @@ def boardAsTable(board, rows, columns):
         html += "  </tr>"
     html += "</table>"
     return html
+
+
 
 def help(cmd):
     print """%s [bingos] [columns] [rows]
